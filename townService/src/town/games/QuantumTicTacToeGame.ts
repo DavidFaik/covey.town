@@ -238,10 +238,7 @@ export default class QuantumTicTacToeGame extends Game<
     );
 
     let newVisibility = this.state.publiclyVisible;
-    if (!existingOccupant) {
-      this._privateBoards[piece][board][row][col] = true;
-      this._appendMoveToSubGame(board, { gamePiece: piece, row, col });
-    } else {
+    if (existingOccupant) {
       if (existingOccupant.gamePiece === piece) {
         throw new InvalidParametersError(BOARD_POSITION_NOT_EMPTY_MESSAGE);
       }
@@ -249,7 +246,11 @@ export default class QuantumTicTacToeGame extends Game<
         newVisibility = cloneVisibility(this.state.publiclyVisible);
         newVisibility[board][row][col] = true;
       }
+    } else {
+      this._appendMoveToSubGame(board, { gamePiece: piece, row, col });
     }
+
+    this._privateBoards[piece][board][row][col] = true;
 
     const newMove: QuantumTicTacToeMove = {
       board,
@@ -311,7 +312,14 @@ export default class QuantumTicTacToeGame extends Game<
       if (this._boardWinners[board]) {
         return false;
       }
-      return this._games[board].state.moves.length < 9;
+      for (let row = 0; row < 3; row += 1) {
+        for (let col = 0; col < 3; col += 1) {
+          if (!this._privateBoards.X[board][row][col] && !this._privateBoards.O[board][row][col]) {
+            return true;
+          }
+        }
+      }
+      return false;
     });
     if (hasAvailableMove) {
       return;
