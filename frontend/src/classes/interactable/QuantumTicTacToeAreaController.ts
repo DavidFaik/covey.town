@@ -124,8 +124,97 @@ export default class QuantumTicTacToeAreaController extends GameAreaController<
   }
 
   protected _updateFrom(newModel: GameArea<QuantumTicTacToeGameState>): void {
+    const previousBoards = _.cloneDeep(this._boards);
+    const wasOurTurn = this.isOurTurn;
+
     super._updateFrom(newModel);
-    // TODO: implement the rest of this
+
+    const createEmptyBoard = (): TicTacToeCell[][] => [
+      [undefined, undefined, undefined],
+      [undefined, undefined, undefined],
+      [undefined, undefined, undefined],
+    ];
+
+    const updatedBoards: { A: TicTacToeCell[][]; B: TicTacToeCell[][]; C: TicTacToeCell[][] } = {
+      A: createEmptyBoard(),
+      B: createEmptyBoard(),
+      C: createEmptyBoard(),
+    };
+
+    const state = newModel.game?.state;
+    if (state) {
+      const visibility = state.publiclyVisible ?? {
+        A: [
+          [false, false, false],
+          [false, false, false],
+          [false, false, false],
+        ],
+        B: [
+          [false, false, false],
+          [false, false, false],
+          [false, false, false],
+        ],
+        C: [
+          [false, false, false],
+          [false, false, false],
+          [false, false, false],
+        ],
+      };
+      type CellInfo = { firstPiece?: 'X' | 'O'; hasOurMove: boolean };
+      const cellInfo = new Map<string, CellInfo>();
+      const boardKeys: Array<'A' | 'B' | 'C'> = ['A', 'B', 'C'];
+      const positions: TicTacToeGridPosition[] = [0, 1, 2];
+      let ourPiece: 'X' | 'O' | undefined;
+      if (this.isPlayer) {
+        try {
+          ourPiece = this.gamePiece;
+        } catch {
+          ourPiece = undefined;
+        }
+      }
+
+      // Track the earliest move for each square and whether we played there.
+      for (const move of state.moves) {
+        const key = `${move.board}-${move.row}-${move.col}`;
+        const info = cellInfo.get(key) ?? { firstPiece: undefined, hasOurMove: false };
+        if (!info.firstPiece) {
+          info.firstPiece = move.gamePiece;
+        }
+        if (ourPiece && move.gamePiece === ourPiece) {
+          info.hasOurMove = true;
+        }
+        cellInfo.set(key, info);
+      }
+
+      for (const board of boardKeys) {
+        for (const row of positions) {
+          for (const col of positions) {
+            const key = `${board}-${row}-${col}`;
+            const info = cellInfo.get(key);
+            const isVisible = visibility[board][row][col];
+            let cellValue: TicTacToeCell = undefined;
+            if (isVisible && info?.firstPiece) {
+              cellValue = info.firstPiece;
+            } else if (info?.hasOurMove && ourPiece) {
+              cellValue = ourPiece;
+            }
+            updatedBoards[board][row][col] = cellValue;
+          }
+        }
+      }
+    }
+
+    this._boards = updatedBoards;
+
+    const statusInProgress = newModel.game?.state.status === 'IN_PROGRESS';
+    if (statusInProgress && !_.isEqual(previousBoards, this._boards)) {
+      this.emit('boardChanged', this._boards);
+    }
+
+    const isOurTurnNow = this.isOurTurn;
+    if (statusInProgress && wasOurTurn !== isOurTurnNow) {
+      this.emit('turnChanged', isOurTurnNow);
+    }
   }
 
   public async makeMove(

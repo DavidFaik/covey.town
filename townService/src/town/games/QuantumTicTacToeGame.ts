@@ -36,7 +36,9 @@ const createEmptyVisibility = (): Record<BoardID, boolean[][]> => ({
   C: emptyGrid(),
 });
 
-const cloneVisibility = (visibility: Record<BoardID, boolean[][]>): Record<BoardID, boolean[][]> => ({
+const cloneVisibility = (
+  visibility: Record<BoardID, boolean[][]>,
+): Record<BoardID, boolean[][]> => ({
   A: cloneGrid(visibility.A),
   B: cloneGrid(visibility.B),
   C: cloneGrid(visibility.C),
@@ -193,7 +195,10 @@ export default class QuantumTicTacToeGame extends Game<
     } else {
       throw new InvalidParametersError(PLAYER_NOT_IN_GAME_MESSAGE);
     }
-    if ((piece === 'X' && this._moveCount % 2 === 1) || (piece === 'O' && this._moveCount % 2 === 0)) {
+    if (
+      (piece === 'X' && this._moveCount % 2 === 1) ||
+      (piece === 'O' && this._moveCount % 2 === 0)
+    ) {
       throw new InvalidParametersError(MOVE_NOT_YOUR_TURN_MESSAGE);
     }
     const { board, row, col } = move.move;
@@ -271,21 +276,18 @@ export default class QuantumTicTacToeGame extends Game<
   private _checkForWins(): void {
     let scoreChanged = false;
     for (const board of BOARD_IDS) {
-      if (this._boardWinners[board]) {
-        continue;
-      }
-      if (this._hasThreeInARow(this._privateBoards.X[board])) {
-        this._boardWinners[board] = 'X';
-        this._xScore += 1;
-        scoreChanged = true;
-        this._markBoardAsWon(board, this.state.x);
-        continue;
-      }
-      if (this._hasThreeInARow(this._privateBoards.O[board])) {
-        this._boardWinners[board] = 'O';
-        this._oScore += 1;
-        scoreChanged = true;
-        this._markBoardAsWon(board, this.state.o);
+      if (!this._boardWinners[board]) {
+        if (this._hasThreeInARow(this._privateBoards.X[board])) {
+          this._boardWinners[board] = 'X';
+          this._xScore += 1;
+          scoreChanged = true;
+          this._markBoardAsWon(board, this.state.x);
+        } else if (this._hasThreeInARow(this._privateBoards.O[board])) {
+          this._boardWinners[board] = 'O';
+          this._oScore += 1;
+          scoreChanged = true;
+          this._markBoardAsWon(board, this.state.o);
+        }
       }
     }
     if (scoreChanged) {
@@ -359,4 +361,3 @@ export default class QuantumTicTacToeGame extends Game<
     return false;
   }
 }
-
