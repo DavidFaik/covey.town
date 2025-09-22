@@ -231,16 +231,17 @@ describe('QuantumTicTacToeGame', () => {
       it('should end the game when all boards are full or won (X wins)', () => {
         const sequence: Position[] = [
           { board: 'A', row: 0, col: 0 },
-          { board: 'A', row: 0, col: 0 },
-          { board: 'A', row: 0, col: 1 },
-          { board: 'B', row: 1, col: 1 },
-          { board: 'A', row: 0, col: 2 },
           { board: 'B', row: 0, col: 0 },
-          { board: 'C', row: 1, col: 0 },
+          { board: 'A', row: 0, col: 1 },
           { board: 'B', row: 0, col: 1 },
+          { board: 'A', row: 0, col: 2 },
+          { board: 'C', row: 1, col: 1 },
+          { board: 'C', row: 0, col: 0 },
+          { board: 'C', row: 2, col: 2 },
+          { board: 'C', row: 1, col: 0 },
+          { board: 'B', row: 1, col: 1 },
           { board: 'C', row: 2, col: 0 },
           { board: 'B', row: 0, col: 2 },
-          { board: 'C', row: 0, col: 0 },
         ];
         playSequence(sequence);
 
@@ -256,18 +257,18 @@ describe('QuantumTicTacToeGame', () => {
 
       it('should end the game when all boards are full or won (O wins)', () => {
         const sequence: Position[] = [
-          { board: 'A', row: 0, col: 0 },
-          { board: 'A', row: 0, col: 0 },
-          { board: 'B', row: 1, col: 1 },
-          { board: 'A', row: 0, col: 1 },
-          { board: 'C', row: 1, col: 0 },
-          { board: 'A', row: 0, col: 2 },
-          { board: 'C', row: 2, col: 0 },
-          { board: 'B', row: 0, col: 0 },
           { board: 'C', row: 0, col: 0 },
+          { board: 'B', row: 0, col: 0 },
+          { board: 'C', row: 1, col: 0 },
           { board: 'B', row: 0, col: 1 },
-          { board: 'B', row: 2, col: 2 },
+          { board: 'A', row: 1, col: 1 },
           { board: 'B', row: 0, col: 2 },
+          { board: 'C', row: 2, col: 0 },
+          { board: 'A', row: 2, col: 0 },
+          { board: 'A', row: 0, col: 0 },
+          { board: 'A', row: 2, col: 1 },
+          { board: 'A', row: 1, col: 0 },
+          { board: 'A', row: 2, col: 2 },
         ];
         playSequence(sequence);
 
@@ -338,25 +339,25 @@ describe('QuantumTicTacToeGame', () => {
       });
 
       it('should correctly handle a full game, including collisions, scoring, and a final winner', () => {
+        makeMove(player1, 'C', 0, 0);
+        expect(game.state.publiclyVisible.C[0][0]).toBe(false);
+        makeMove(player2, 'C', 0, 0);
+        expect(game.state.publiclyVisible.C[0][0]).toBe(true);
+
         makeMove(player1, 'A', 0, 0);
         expect(game.state.publiclyVisible.A[0][0]).toBe(false);
-        makeMove(player2, 'A', 0, 0);
-        expect(game.state.publiclyVisible.A[0][0]).toBe(true);
-
-        makeMove(player1, 'B', 0, 0);
-        expect(game.state.publiclyVisible.B[0][0]).toBe(false);
         makeMove(player2, 'B', 0, 0);
-        expect(game.state.publiclyVisible.B[0][0]).toBe(true);
+        expect(game.state.publiclyVisible.B[0][0]).toBe(false);
 
         makeMove(player1, 'A', 0, 1);
         makeMove(player2, 'B', 0, 1);
         makeMove(player1, 'A', 0, 2);
         makeMove(player2, 'B', 0, 2);
 
-        makeMove(player1, 'C', 0, 0);
-        makeMove(player2, 'C', 1, 1);
         makeMove(player1, 'C', 1, 0);
-        makeMove(player2, 'C', 2, 2);
+        expect(game.state.publiclyVisible.C[1][0]).toBe(false);
+        makeMove(player2, 'C', 1, 0);
+        expect(game.state.publiclyVisible.C[1][0]).toBe(true);
         makeMove(player1, 'C', 2, 0);
 
         expect(game.state.status).toBe('OVER');

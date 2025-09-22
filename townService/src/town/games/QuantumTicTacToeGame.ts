@@ -290,18 +290,29 @@ export default class QuantumTicTacToeGame extends Game<
   private _checkForWins(): void {
     let scoreChanged = false;
     for (const board of BOARD_IDS) {
-      if (!this._boardWinners[board]) {
-        if (this._hasThreeInARow(this._privateBoards.X[board])) {
-          this._boardWinners[board] = 'X';
-          this._xScore += 1;
-          scoreChanged = true;
-          this._markBoardAsWon(board, this.state.x);
-        } else if (this._hasThreeInARow(this._privateBoards.O[board])) {
-          this._boardWinners[board] = 'O';
-          this._oScore += 1;
-          scoreChanged = true;
-          this._markBoardAsWon(board, this.state.o);
+      if (this._boardWinners[board]) {
+        continue;
+      }
+      const boardState = this._games[board].state;
+      const xOccupancy = emptyGrid();
+      const oOccupancy = emptyGrid();
+      boardState.moves.forEach(move => {
+        if (move.gamePiece === 'X') {
+          xOccupancy[move.row][move.col] = true;
+        } else {
+          oOccupancy[move.row][move.col] = true;
         }
+      });
+      if (this._hasThreeInARow(xOccupancy)) {
+        this._boardWinners[board] = 'X';
+        this._xScore += 1;
+        scoreChanged = true;
+        this._markBoardAsWon(board, this.state.x);
+      } else if (this._hasThreeInARow(oOccupancy)) {
+        this._boardWinners[board] = 'O';
+        this._oScore += 1;
+        scoreChanged = true;
+        this._markBoardAsWon(board, this.state.o);
       }
     }
     if (scoreChanged) {
@@ -325,14 +336,7 @@ export default class QuantumTicTacToeGame extends Game<
       if (this._boardWinners[board]) {
         return false;
       }
-      for (let row = 0; row < 3; row += 1) {
-        for (let col = 0; col < 3; col += 1) {
-          if (!this._privateBoards.X[board][row][col] && !this._privateBoards.O[board][row][col]) {
-            return true;
-          }
-        }
-      }
-      return false;
+      return this._games[board].state.moves.length < 9;
     });
     if (hasAvailableMove) {
       return;
