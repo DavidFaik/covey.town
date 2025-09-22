@@ -4,6 +4,7 @@ import InvalidParametersError, {
   GAME_FULL_MESSAGE,
   GAME_NOT_IN_PROGRESS_MESSAGE,
   MOVE_NOT_YOUR_TURN_MESSAGE,
+  INVALID_MOVE_MESSAGE,
   PLAYER_ALREADY_IN_GAME_MESSAGE,
   PLAYER_NOT_IN_GAME_MESSAGE,
 } from '../../lib/InvalidParametersError';
@@ -220,10 +221,12 @@ export default class QuantumTicTacToeGame extends Game<
     const rowIndex = row as 0 | 1 | 2;
     const colIndex = col as 0 | 1 | 2;
     if (this._boardWinners[boardID]) {
-      throw new InvalidParametersError(BOARD_POSITION_NOT_VALID_MESSAGE);
+      throw new InvalidParametersError(INVALID_MOVE_MESSAGE);
     }
     if (this._privateBoards[piece][boardID][rowIndex][colIndex]) {
-      throw new InvalidParametersError(BOARD_POSITION_NOT_EMPTY_MESSAGE);
+      const isPubliclyVisible = this.state.publiclyVisible[boardID][rowIndex][colIndex];
+      const message = isPubliclyVisible ? BOARD_POSITION_NOT_EMPTY_MESSAGE : INVALID_MOVE_MESSAGE;
+      throw new InvalidParametersError(message);
     }
     return { piece, board: boardID, row: rowIndex, col: colIndex };
   }

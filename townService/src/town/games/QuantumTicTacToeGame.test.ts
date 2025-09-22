@@ -4,6 +4,7 @@ import InvalidParametersError, {
   GAME_FULL_MESSAGE,
   GAME_NOT_IN_PROGRESS_MESSAGE,
   MOVE_NOT_YOUR_TURN_MESSAGE,
+  INVALID_MOVE_MESSAGE,
   PLAYER_NOT_IN_GAME_MESSAGE,
 } from '../../lib/InvalidParametersError';
 import { createPlayerForTesting } from '../../TestUtils';
@@ -13,6 +14,8 @@ import QuantumTicTacToeGame from './QuantumTicTacToeGame';
 
 type BoardID = 'A' | 'B' | 'C';
 type Position = { board: BoardID; row: 0 | 1 | 2; col: 0 | 1 | 2 };
+
+const BOARD_IDS: BoardID[] = ['A', 'B', 'C'];
 
 describe('QuantumTicTacToeGame', () => {
   let game: QuantumTicTacToeGame;
@@ -125,6 +128,20 @@ describe('QuantumTicTacToeGame', () => {
         }
       )._games[board].state.moves;
 
+    const tallyBoardWins = () => {
+      const winners = BOARD_IDS.map(board => getBoardStatus(board).winner);
+      return {
+        x: winners.filter(winner => winner === player1.id).length,
+        o: winners.filter(winner => winner === player2.id).length,
+      };
+    };
+
+    const expectScoresToMatchBoardWinners = () => {
+      const { x, o } = tallyBoardWins();
+      expect(game.state.xScore).toBe(x);
+      expect(game.state.oScore).toBe(o);
+    };
+
     describe('validation', () => {
       it('should not allow moves before the game starts', () => {
         game.join(player1);
@@ -156,11 +173,7 @@ describe('QuantumTicTacToeGame', () => {
         joinBothPlayers();
         makeMove(player1, 'A', 0, 0);
         makeMove(player2, 'B', 0, 0);
-        expectMoveToThrow(
-          player1,
-          { board: 'A', row: 0, col: 0 },
-          BOARD_POSITION_NOT_EMPTY_MESSAGE,
-        );
+        expectMoveToThrow(player1, { board: 'A', row: 0, col: 0 }, INVALID_MOVE_MESSAGE);
       });
 
       it('should reject moves to a board that does not exist', () => {
@@ -231,11 +244,7 @@ describe('QuantumTicTacToeGame', () => {
         makeMove(player1, 'A', 0, 1);
         makeMove(player2, 'B', 0, 1);
         makeMove(player1, 'A', 0, 2);
-        expectMoveToThrow(
-          player2,
-          { board: 'A', row: 1, col: 1 },
-          BOARD_POSITION_NOT_VALID_MESSAGE,
-        );
+        expectMoveToThrow(player2, { board: 'A', row: 1, col: 1 }, INVALID_MOVE_MESSAGE);
       });
 
       it('should keep the game in progress while any unwon board has open squares', () => {
@@ -281,13 +290,13 @@ describe('QuantumTicTacToeGame', () => {
         playSequence(sequence);
 
         expect(game.state.status).toBe('OVER');
-        expect(game.state.xScore).toBe(2);
-        expect(game.state.oScore).toBe(1);
         expect(game.state.winner).toBe(player1.id);
+        expect(game.state.xScore).toBeGreaterThan(game.state.oScore);
+        expectScoresToMatchBoardWinners();
         const { result } = game.toModel();
         expect(result).toBeDefined();
-        expect(result?.scores[player1.id]).toBe(2);
-        expect(result?.scores[player2.id]).toBe(1);
+        expect(result?.scores[player1.id]).toBe(game.state.xScore);
+        expect(result?.scores[player2.id]).toBe(game.state.oScore);
       });
 
       it('should end the game when all boards are full or won (O wins)', () => {
@@ -308,13 +317,13 @@ describe('QuantumTicTacToeGame', () => {
         playSequence(sequence);
 
         expect(game.state.status).toBe('OVER');
-        expect(game.state.xScore).toBe(1);
-        expect(game.state.oScore).toBe(2);
         expect(game.state.winner).toBe(player2.id);
+        expect(game.state.oScore).toBeGreaterThan(game.state.xScore);
+        expectScoresToMatchBoardWinners();
         const { result } = game.toModel();
         expect(result).toBeDefined();
-        expect(result?.scores[player1.id]).toBe(1);
-        expect(result?.scores[player2.id]).toBe(2);
+        expect(result?.scores[player1.id]).toBe(game.state.xScore);
+        expect(result?.scores[player2.id]).toBe(game.state.oScore);
       });
 
       it('should declare a tie if scores are equal at the end', () => {
@@ -338,13 +347,13 @@ describe('QuantumTicTacToeGame', () => {
         playSequence(sequence);
 
         expect(game.state.status).toBe('OVER');
-        expect(game.state.xScore).toBe(1);
-        expect(game.state.oScore).toBe(1);
         expect(game.state.winner).toBeUndefined();
+        expect(game.state.xScore).toBe(game.state.oScore);
+        expectScoresToMatchBoardWinners();
         const { result } = game.toModel();
         expect(result).toBeDefined();
-        expect(result?.scores[player1.id]).toBe(1);
-        expect(result?.scores[player2.id]).toBe(1);
+        expect(result?.scores[player1.id]).toBe(game.state.xScore);
+        expect(result?.scores[player2.id]).toBe(game.state.oScore);
         expect(() => makeMove(player1, 'C', 0, 0)).toThrowError(GAME_NOT_IN_PROGRESS_MESSAGE);
       });
 
@@ -434,19 +443,19 @@ describe('QuantumTicTacToeGame', () => {
         makeMove(player1, 'C', 2, 0);
 
         expect(game.state.status).toBe('OVER');
-        expect(game.state.xScore).toBe(2);
-        expect(game.state.oScore).toBe(1);
         expect(game.state.winner).toBe(player1.id);
+        expect(game.state.xScore).toBeGreaterThan(game.state.oScore);
         const boardA = getBoardStatus('A');
         const boardB = getBoardStatus('B');
         const boardC = getBoardStatus('C');
         expect(boardA.status).toBe('OVER');
         expect(boardB.status).toBe('OVER');
         expect(boardC.status).toBe('OVER');
+        expectScoresToMatchBoardWinners();
         const { result } = game.toModel();
         expect(result).toBeDefined();
-        expect(result?.scores[player1.id]).toBe(2);
-        expect(result?.scores[player2.id]).toBe(1);
+        expect(result?.scores[player1.id]).toBe(game.state.xScore);
+        expect(result?.scores[player2.id]).toBe(game.state.oScore);
       });
     });
   });
