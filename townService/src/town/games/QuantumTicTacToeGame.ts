@@ -183,7 +183,9 @@ export default class QuantumTicTacToeGame extends Game<
    * player's turn, that the game is actually in-progress, etc.
    * @see TicTacToeGame#_validateMove
    */
-  private _validateMove(move: GameMove<QuantumTicTacToeMove>): PlayerPiece {
+  private _validateMove(
+    move: GameMove<QuantumTicTacToeMove>,
+  ): { piece: PlayerPiece; board: BoardID; row: 0 | 1 | 2; col: 0 | 1 | 2 } {
     if (this.state.status !== 'IN_PROGRESS') {
       throw new InvalidParametersError(GAME_NOT_IN_PROGRESS_MESSAGE);
     }
@@ -202,16 +204,25 @@ export default class QuantumTicTacToeGame extends Game<
       throw new InvalidParametersError(MOVE_NOT_YOUR_TURN_MESSAGE);
     }
     const { board, row, col } = move.move;
+    if (!BOARD_IDS.includes(board)) {
+      throw new InvalidParametersError(BOARD_POSITION_NOT_VALID_MESSAGE);
+    }
+    if (!Number.isInteger(row) || !Number.isInteger(col)) {
+      throw new InvalidParametersError(BOARD_POSITION_NOT_VALID_MESSAGE);
+    }
     if (row < 0 || row > 2 || col < 0 || col > 2) {
       throw new InvalidParametersError(BOARD_POSITION_NOT_VALID_MESSAGE);
     }
-    if (this._boardWinners[board]) {
+    const boardID = board;
+    const rowIndex = row as 0 | 1 | 2;
+    const colIndex = col as 0 | 1 | 2;
+    if (this._boardWinners[boardID]) {
       throw new InvalidParametersError(BOARD_POSITION_NOT_VALID_MESSAGE);
     }
-    if (this._privateBoards[piece][board][row][col]) {
+    if (this._privateBoards[piece][boardID][rowIndex][colIndex]) {
       throw new InvalidParametersError(BOARD_POSITION_NOT_EMPTY_MESSAGE);
     }
-    return piece;
+    return { piece, board: boardID, row: rowIndex, col: colIndex };
   }
 
   private _appendMoveToSubGame(board: BoardID, move: TicTacToeMove): void {
@@ -230,8 +241,7 @@ export default class QuantumTicTacToeGame extends Game<
   }
 
   public applyMove(move: GameMove<QuantumTicTacToeMove>): void {
-    const piece = this._validateMove(move);
-    const { board, row, col } = move.move;
+    const { piece, board, row, col } = this._validateMove(move);
     const boardGame = this._games[board];
     const existingOccupant = boardGame.state.moves.find(
       eachMove => eachMove.row === row && eachMove.col === col,
@@ -369,3 +379,4 @@ export default class QuantumTicTacToeGame extends Game<
     return false;
   }
 }
+

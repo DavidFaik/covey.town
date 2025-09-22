@@ -107,56 +107,7 @@ describe('QuantumTicTacToeGame', () => {
     });
   });
 
-  describe('applyMove validation', () => {
-    it('should not allow moves before the game starts', () => {
-      game.join(player1);
-      expectMoveToThrow(player1, { board: 'A', row: 0, col: 0 }, GAME_NOT_IN_PROGRESS_MESSAGE);
-    });
-
-    it('should not allow non-players to move', () => {
-      joinBothPlayers();
-      expectMoveToThrow(spectator, { board: 'A', row: 0, col: 0 }, PLAYER_NOT_IN_GAME_MESSAGE);
-    });
-
-    it("should enforce players' turns", () => {
-      joinBothPlayers();
-      makeMove(player1, 'A', 0, 0);
-      expectMoveToThrow(player1, { board: 'B', row: 1, col: 1 }, MOVE_NOT_YOUR_TURN_MESSAGE);
-    });
-
-    it('should reject moves outside the board bounds', () => {
-      joinBothPlayers();
-      expect(() =>
-        game.applyMove(createMove(player1, { board: 'A', row: 3, col: 0 })),
-      ).toThrowError(BOARD_POSITION_NOT_VALID_MESSAGE);
-      expect(() =>
-        game.applyMove(createMove(player1, { board: 'A', row: 0, col: -1 })),
-      ).toThrowError(BOARD_POSITION_NOT_VALID_MESSAGE);
-    });
-
-    it('should reject moves on a board that has already been won', () => {
-      joinBothPlayers();
-      makeMove(player1, 'A', 0, 0);
-      makeMove(player2, 'B', 0, 0);
-      makeMove(player1, 'A', 0, 1);
-      makeMove(player2, 'B', 0, 1);
-      makeMove(player1, 'A', 0, 2);
-      expectMoveToThrow(player2, { board: 'A', row: 1, col: 1 }, BOARD_POSITION_NOT_VALID_MESSAGE);
-    });
-
-    it('should reject moves on a square already claimed by the same player', () => {
-      joinBothPlayers();
-      makeMove(player1, 'A', 0, 0);
-      makeMove(player2, 'B', 0, 0);
-      expectMoveToThrow(player1, { board: 'A', row: 0, col: 0 }, BOARD_POSITION_NOT_EMPTY_MESSAGE);
-    });
-  });
-
-  describe('applyMove gameplay', () => {
-    beforeEach(() => {
-      joinBothPlayers();
-    });
-
+  describe('applyMove', () => {
     const getBoardStatus = (board: BoardID) =>
       (
         game as unknown as {
@@ -164,103 +115,253 @@ describe('QuantumTicTacToeGame', () => {
         }
       )._games[board].state;
 
-    it('should keep a square hidden until a collision occurs and reveal it afterwards', () => {
-      makeMove(player1, 'A', 0, 0);
-      expect(game.state.publiclyVisible.A[0][0]).toBe(false);
-      makeMove(player2, 'A', 0, 0);
-      expect(game.state.publiclyVisible.A[0][0]).toBe(true);
-      makeMove(player1, 'B', 1, 1);
-      expectMoveToThrow(player2, { board: 'A', row: 0, col: 0 }, BOARD_POSITION_NOT_EMPTY_MESSAGE);
-    });
-
-    it('should award X a point when completing a row, even with collisions', () => {
-      makeMove(player1, 'A', 0, 0);
-      makeMove(player2, 'B', 0, 0);
-      makeMove(player1, 'A', 0, 1);
-      makeMove(player2, 'A', 0, 0);
-      makeMove(player1, 'A', 0, 2);
-      expect(game.state.xScore).toBe(1);
-      expect(game.state.oScore).toBe(0);
-      const boardA = getBoardStatus('A');
-      expect(boardA.status).toBe('OVER');
-      expect(boardA.winner).toBe(player1.id);
-    });
-
-    it('should award O a point when completing a row', () => {
-      makeMove(player1, 'A', 0, 0);
-      makeMove(player2, 'B', 0, 0);
-      makeMove(player1, 'A', 1, 0);
-      makeMove(player2, 'B', 0, 1);
-      makeMove(player1, 'C', 1, 1);
-      makeMove(player2, 'B', 0, 2);
-      expect(game.state.xScore).toBe(0);
-      expect(game.state.oScore).toBe(1);
-      const boardB = getBoardStatus('B');
-      expect(boardB.status).toBe('OVER');
-      expect(boardB.winner).toBe(player2.id);
-    });
-
-    it('should end the game, record scores, and declare a tie when boards are exhausted', () => {
-      const sequence: Position[] = [
-        { board: 'A', row: 0, col: 0 },
-        { board: 'B', row: 0, col: 0 },
-        { board: 'A', row: 0, col: 1 },
-        { board: 'B', row: 0, col: 1 },
-        { board: 'A', row: 0, col: 2 },
-        { board: 'B', row: 0, col: 2 },
-        { board: 'C', row: 0, col: 0 },
-        { board: 'C', row: 1, col: 1 },
-        { board: 'C', row: 0, col: 2 },
-        { board: 'C', row: 0, col: 1 },
-        { board: 'C', row: 2, col: 1 },
-        { board: 'C', row: 1, col: 2 },
-        { board: 'C', row: 1, col: 0 },
-        { board: 'C', row: 2, col: 0 },
-        { board: 'C', row: 2, col: 2 },
-      ];
-      sequence.forEach((move, idx) => {
-        const player = idx % 2 === 0 ? player1 : player2;
-        makeMove(player, move.board, move.row, move.col);
+    describe('validation', () => {
+      it('should not allow moves before the game starts', () => {
+        game.join(player1);
+        expectMoveToThrow(player1, { board: 'A', row: 0, col: 0 }, GAME_NOT_IN_PROGRESS_MESSAGE);
       });
 
-      expect(game.state.status).toBe('OVER');
-      expect(game.state.xScore).toBe(1);
-      expect(game.state.oScore).toBe(1);
-      expect(game.state.winner).toBeUndefined();
-      const { result } = game.toModel();
-      expect(result).toBeDefined();
-      expect(result?.scores[player1.id]).toBe(1);
-      expect(result?.scores[player2.id]).toBe(1);
-      expect(() => makeMove(player1, 'C', 0, 0)).toThrowError(GAME_NOT_IN_PROGRESS_MESSAGE);
-    });
-
-    it('should end the game and declare the higher-scoring player the winner', () => {
-      const sequence: Position[] = [
-        { board: 'A', row: 0, col: 0 },
-        { board: 'B', row: 0, col: 0 },
-        { board: 'A', row: 0, col: 1 },
-        { board: 'C', row: 0, col: 0 },
-        { board: 'A', row: 0, col: 2 },
-        { board: 'C', row: 1, col: 0 },
-        { board: 'B', row: 2, col: 0 },
-        { board: 'C', row: 2, col: 0 },
-        { board: 'B', row: 2, col: 1 },
-        { board: 'B', row: 0, col: 1 },
-        { board: 'B', row: 2, col: 2 },
-      ];
-      sequence.forEach((move, idx) => {
-        const player = idx % 2 === 0 ? player1 : player2;
-        makeMove(player, move.board, move.row, move.col);
+      it('should not allow non-players to move', () => {
+        joinBothPlayers();
+        expectMoveToThrow(spectator, { board: 'A', row: 0, col: 0 }, PLAYER_NOT_IN_GAME_MESSAGE);
       });
 
-      expect(game.state.status).toBe('OVER');
-      expect(game.state.xScore).toBe(2);
-      expect(game.state.oScore).toBe(1);
-      expect(game.state.winner).toBe(player1.id);
-      const { result } = game.toModel();
-      expect(result).toBeDefined();
-      expect(result?.scores[player1.id]).toBe(2);
-      expect(result?.scores[player2.id]).toBe(1);
+      it("should enforce players' turns", () => {
+        joinBothPlayers();
+        makeMove(player1, 'A', 0, 0);
+        expectMoveToThrow(player1, { board: 'B', row: 1, col: 1 }, MOVE_NOT_YOUR_TURN_MESSAGE);
+      });
+
+      it('should reject moves outside the board bounds', () => {
+        joinBothPlayers();
+        expect(() =>
+          game.applyMove(createMove(player1, { board: 'A', row: 3, col: 0 })),
+        ).toThrowError(BOARD_POSITION_NOT_VALID_MESSAGE);
+        expect(() =>
+          game.applyMove(createMove(player1, { board: 'A', row: 0, col: -1 })),
+        ).toThrowError(BOARD_POSITION_NOT_VALID_MESSAGE);
+      });
+
+      it('should throw an error if a player tries to play on their own piece', () => {
+        joinBothPlayers();
+        makeMove(player1, 'A', 0, 0);
+        makeMove(player2, 'B', 0, 0);
+        expectMoveToThrow(player1, { board: 'A', row: 0, col: 0 }, BOARD_POSITION_NOT_EMPTY_MESSAGE);
+      });
+
+      it('should reject moves to a board that does not exist', () => {
+        joinBothPlayers();
+        const invalidMove: GameMove<QuantumTicTacToeMove> = {
+          playerID: player1.id,
+          gameID: game.id,
+          move: {
+            board: 'D' as unknown as BoardID,
+            row: 0 as 0,
+            col: 0 as 0,
+            gamePiece: 'X',
+          },
+        };
+        expect(() => game.applyMove(invalidMove)).toThrowError(BOARD_POSITION_NOT_VALID_MESSAGE);
+      });
+
+      it('should reject moves with non-integer coordinates', () => {
+        joinBothPlayers();
+        expect(() =>
+          game.applyMove(createMove(player1, { board: 'A', row: 1.5, col: 0 })),
+        ).toThrowError(BOARD_POSITION_NOT_VALID_MESSAGE);
+      });
+    });
+
+    describe('scoring and game end', () => {
+      const playSequence = (sequence: Position[]) => {
+        sequence.forEach((move, idx) => {
+          const currentPlayer = idx % 2 === 0 ? player1 : player2;
+          makeMove(currentPlayer, move.board, move.row, move.col);
+        });
+      };
+
+      beforeEach(() => {
+        joinBothPlayers();
+      });
+
+      it('should award X a point when completing a row, even with collisions', () => {
+        makeMove(player1, 'A', 0, 0);
+        makeMove(player2, 'B', 0, 0);
+        makeMove(player1, 'A', 0, 1);
+        makeMove(player2, 'A', 0, 0);
+        makeMove(player1, 'A', 0, 2);
+        expect(game.state.xScore).toBe(1);
+        expect(game.state.oScore).toBe(0);
+        const boardA = getBoardStatus('A');
+        expect(boardA.status).toBe('OVER');
+        expect(boardA.winner).toBe(player1.id);
+      });
+
+      it('should award O a point when completing a row', () => {
+        makeMove(player1, 'A', 0, 0);
+        makeMove(player2, 'B', 0, 0);
+        makeMove(player1, 'A', 1, 0);
+        makeMove(player2, 'B', 0, 1);
+        makeMove(player1, 'C', 1, 1);
+        makeMove(player2, 'B', 0, 2);
+        expect(game.state.xScore).toBe(0);
+        expect(game.state.oScore).toBe(1);
+        const boardB = getBoardStatus('B');
+        expect(boardB.status).toBe('OVER');
+        expect(boardB.winner).toBe(player2.id);
+      });
+
+      it('should not allow moves on a board that has been won', () => {
+        makeMove(player1, 'A', 0, 0);
+        makeMove(player2, 'B', 0, 0);
+        makeMove(player1, 'A', 0, 1);
+        makeMove(player2, 'B', 0, 1);
+        makeMove(player1, 'A', 0, 2);
+        expectMoveToThrow(player2, { board: 'A', row: 1, col: 1 }, BOARD_POSITION_NOT_VALID_MESSAGE);
+      });
+
+      it('should end the game when all boards are full or won (X wins)', () => {
+        const sequence: Position[] = [
+          { board: 'A', row: 0, col: 0 },
+          { board: 'A', row: 0, col: 0 },
+          { board: 'A', row: 0, col: 1 },
+          { board: 'B', row: 1, col: 1 },
+          { board: 'A', row: 0, col: 2 },
+          { board: 'B', row: 0, col: 0 },
+          { board: 'C', row: 1, col: 0 },
+          { board: 'B', row: 0, col: 1 },
+          { board: 'C', row: 2, col: 0 },
+          { board: 'B', row: 0, col: 2 },
+          { board: 'C', row: 0, col: 0 },
+        ];
+        playSequence(sequence);
+
+        expect(game.state.status).toBe('OVER');
+        expect(game.state.xScore).toBe(2);
+        expect(game.state.oScore).toBe(1);
+        expect(game.state.winner).toBe(player1.id);
+        const { result } = game.toModel();
+        expect(result).toBeDefined();
+        expect(result?.scores[player1.id]).toBe(2);
+        expect(result?.scores[player2.id]).toBe(1);
+      });
+
+      it('should end the game when all boards are full or won (O wins)', () => {
+        const sequence: Position[] = [
+          { board: 'A', row: 0, col: 0 },
+          { board: 'A', row: 0, col: 0 },
+          { board: 'B', row: 1, col: 1 },
+          { board: 'A', row: 0, col: 1 },
+          { board: 'C', row: 1, col: 0 },
+          { board: 'A', row: 0, col: 2 },
+          { board: 'C', row: 2, col: 0 },
+          { board: 'B', row: 0, col: 0 },
+          { board: 'C', row: 0, col: 0 },
+          { board: 'B', row: 0, col: 1 },
+          { board: 'B', row: 2, col: 2 },
+          { board: 'B', row: 0, col: 2 },
+        ];
+        playSequence(sequence);
+
+        expect(game.state.status).toBe('OVER');
+        expect(game.state.xScore).toBe(1);
+        expect(game.state.oScore).toBe(2);
+        expect(game.state.winner).toBe(player2.id);
+        const { result } = game.toModel();
+        expect(result).toBeDefined();
+        expect(result?.scores[player1.id]).toBe(1);
+        expect(result?.scores[player2.id]).toBe(2);
+      });
+
+      it('should declare a tie if scores are equal at the end', () => {
+        const sequence: Position[] = [
+          { board: 'A', row: 0, col: 0 },
+          { board: 'B', row: 0, col: 0 },
+          { board: 'A', row: 0, col: 1 },
+          { board: 'B', row: 0, col: 1 },
+          { board: 'A', row: 0, col: 2 },
+          { board: 'B', row: 0, col: 2 },
+          { board: 'C', row: 0, col: 0 },
+          { board: 'C', row: 1, col: 1 },
+          { board: 'C', row: 0, col: 2 },
+          { board: 'C', row: 0, col: 1 },
+          { board: 'C', row: 2, col: 1 },
+          { board: 'C', row: 1, col: 2 },
+          { board: 'C', row: 1, col: 0 },
+          { board: 'C', row: 2, col: 0 },
+          { board: 'C', row: 2, col: 2 },
+        ];
+        playSequence(sequence);
+
+        expect(game.state.status).toBe('OVER');
+        expect(game.state.xScore).toBe(1);
+        expect(game.state.oScore).toBe(1);
+        expect(game.state.winner).toBeUndefined();
+        const { result } = game.toModel();
+        expect(result).toBeDefined();
+        expect(result?.scores[player1.id]).toBe(1);
+        expect(result?.scores[player2.id]).toBe(1);
+        expect(() => makeMove(player1, 'C', 0, 0)).toThrowError(GAME_NOT_IN_PROGRESS_MESSAGE);
+      });
+    });
+
+    describe('visibility and collisions', () => {
+      beforeEach(() => {
+        joinBothPlayers();
+      });
+
+      it('should keep a square hidden until a collision occurs and reveal it afterwards', () => {
+        makeMove(player1, 'A', 0, 0);
+        expect(game.state.publiclyVisible.A[0][0]).toBe(false);
+        makeMove(player2, 'A', 0, 0);
+        expect(game.state.publiclyVisible.A[0][0]).toBe(true);
+        makeMove(player1, 'B', 1, 1);
+        expectMoveToThrow(player2, { board: 'A', row: 0, col: 0 }, BOARD_POSITION_NOT_EMPTY_MESSAGE);
+      });
+    });
+
+    describe('a full game from start to finish', () => {
+      beforeEach(() => {
+        joinBothPlayers();
+      });
+
+      it('should correctly handle a full game, including collisions, scoring, and a final winner', () => {
+        makeMove(player1, 'A', 0, 0);
+        expect(game.state.publiclyVisible.A[0][0]).toBe(false);
+        makeMove(player2, 'A', 0, 0);
+        expect(game.state.publiclyVisible.A[0][0]).toBe(true);
+
+        makeMove(player1, 'B', 0, 0);
+        expect(game.state.publiclyVisible.B[0][0]).toBe(false);
+        makeMove(player2, 'B', 0, 0);
+        expect(game.state.publiclyVisible.B[0][0]).toBe(true);
+
+        makeMove(player1, 'A', 0, 1);
+        makeMove(player2, 'B', 0, 1);
+        makeMove(player1, 'A', 0, 2);
+        makeMove(player2, 'B', 0, 2);
+
+        makeMove(player1, 'C', 0, 0);
+        makeMove(player2, 'C', 1, 1);
+        makeMove(player1, 'C', 1, 0);
+        makeMove(player2, 'C', 2, 2);
+        makeMove(player1, 'C', 2, 0);
+
+        expect(game.state.status).toBe('OVER');
+        expect(game.state.xScore).toBe(2);
+        expect(game.state.oScore).toBe(1);
+        expect(game.state.winner).toBe(player1.id);
+        const boardA = getBoardStatus('A');
+        const boardB = getBoardStatus('B');
+        const boardC = getBoardStatus('C');
+        expect(boardA.status).toBe('OVER');
+        expect(boardB.status).toBe('OVER');
+        expect(boardC.status).toBe('OVER');
+        const { result } = game.toModel();
+        expect(result).toBeDefined();
+        expect(result?.scores[player1.id]).toBe(2);
+        expect(result?.scores[player2.id]).toBe(1);
+      });
     });
   });
 });
