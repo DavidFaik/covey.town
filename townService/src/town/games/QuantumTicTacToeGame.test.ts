@@ -115,6 +115,16 @@ describe('QuantumTicTacToeGame', () => {
         }
       )._games[board].state;
 
+    const getBoardMoves = (board: BoardID) =>
+      (
+        game as unknown as {
+          _games: Record<
+            BoardID,
+            { state: { moves: { gamePiece: 'X' | 'O'; row: number; col: number }[] } }
+          >;
+        }
+      )._games[board].state.moves;
+
     describe('validation', () => {
       it('should not allow moves before the game starts', () => {
         game.join(player1);
@@ -228,6 +238,31 @@ describe('QuantumTicTacToeGame', () => {
         );
       });
 
+      it('should keep the game in progress while any unwon board has open squares', () => {
+        makeMove(player1, 'A', 0, 0);
+        makeMove(player2, 'C', 0, 0);
+        makeMove(player1, 'A', 0, 1);
+        makeMove(player2, 'C', 1, 1);
+        makeMove(player1, 'A', 0, 2);
+
+        expect(game.state.status).toBe('IN_PROGRESS');
+        expect(game.state.winner).toBeUndefined();
+
+        makeMove(player2, 'B', 0, 0);
+        makeMove(player1, 'C', 2, 0);
+        makeMove(player2, 'B', 1, 1);
+        makeMove(player1, 'C', 2, 1);
+        makeMove(player2, 'B', 2, 2);
+
+        expect(game.state.xScore).toBe(1);
+        expect(game.state.oScore).toBe(1);
+        expect(game.state.status).toBe('IN_PROGRESS');
+        expect(game.state.winner).toBeUndefined();
+
+        expect(() => makeMove(player1, 'C', 0, 2)).not.toThrow();
+        expect(game.state.status).toBe('IN_PROGRESS');
+      });
+
       it('should end the game when all boards are full or won (X wins)', () => {
         const sequence: Position[] = [
           { board: 'A', row: 0, col: 0 },
@@ -312,6 +347,32 @@ describe('QuantumTicTacToeGame', () => {
         expect(result?.scores[player2.id]).toBe(1);
         expect(() => makeMove(player1, 'C', 0, 0)).toThrowError(GAME_NOT_IN_PROGRESS_MESSAGE);
       });
+
+      it('should preserve the recorded result after the game ends', () => {
+        const sequence: Position[] = [
+          { board: 'A', row: 0, col: 0 },
+          { board: 'B', row: 0, col: 0 },
+          { board: 'A', row: 0, col: 1 },
+          { board: 'B', row: 0, col: 1 },
+          { board: 'A', row: 0, col: 2 },
+          { board: 'C', row: 1, col: 1 },
+          { board: 'C', row: 0, col: 0 },
+          { board: 'C', row: 2, col: 2 },
+          { board: 'C', row: 1, col: 0 },
+          { board: 'B', row: 1, col: 1 },
+          { board: 'C', row: 2, col: 0 },
+          { board: 'B', row: 0, col: 2 },
+        ];
+        playSequence(sequence);
+
+        const firstModel = game.toModel();
+        const secondModel = game.toModel();
+        expect(secondModel.result).toBe(firstModel.result);
+        expect(secondModel.result?.scores).toEqual({
+          [player1.id]: 2,
+          [player2.id]: 1,
+        });
+      });
     });
 
     describe('visibility and collisions', () => {
@@ -330,6 +391,18 @@ describe('QuantumTicTacToeGame', () => {
           { board: 'A', row: 0, col: 0 },
           BOARD_POSITION_NOT_EMPTY_MESSAGE,
         );
+      });
+
+      it('should not duplicate the underlying subgame move when a collision occurs', () => {
+        makeMove(player1, 'A', 0, 0);
+        const movesAfterFirstPlacement = getBoardMoves('A');
+        expect(movesAfterFirstPlacement).toHaveLength(1);
+        expect(movesAfterFirstPlacement[0]).toMatchObject({ gamePiece: 'X', row: 0, col: 0 });
+
+        makeMove(player2, 'A', 0, 0);
+        const movesAfterCollision = getBoardMoves('A');
+        expect(movesAfterCollision).toHaveLength(1);
+        expect(movesAfterCollision[0]).toMatchObject({ gamePiece: 'X', row: 0, col: 0 });
       });
     });
 

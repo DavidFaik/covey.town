@@ -290,29 +290,28 @@ export default class QuantumTicTacToeGame extends Game<
   private _checkForWins(): void {
     let scoreChanged = false;
     for (const board of BOARD_IDS) {
-      if (this._boardWinners[board]) {
-        continue;
-      }
-      const boardState = this._games[board].state;
-      const xOccupancy = emptyGrid();
-      const oOccupancy = emptyGrid();
-      boardState.moves.forEach(move => {
-        if (move.gamePiece === 'X') {
-          xOccupancy[move.row][move.col] = true;
-        } else {
-          oOccupancy[move.row][move.col] = true;
+      if (!this._boardWinners[board]) {
+        const boardState = this._games[board].state;
+        const xOccupancy = emptyGrid();
+        const oOccupancy = emptyGrid();
+        boardState.moves.forEach(move => {
+          if (move.gamePiece === 'X') {
+            xOccupancy[move.row][move.col] = true;
+          } else {
+            oOccupancy[move.row][move.col] = true;
+          }
+        });
+        if (this._hasThreeInARow(xOccupancy)) {
+          this._boardWinners[board] = 'X';
+          this._xScore += 1;
+          scoreChanged = true;
+          this._markBoardAsWon(board, this.state.x);
+        } else if (this._hasThreeInARow(oOccupancy)) {
+          this._boardWinners[board] = 'O';
+          this._oScore += 1;
+          scoreChanged = true;
+          this._markBoardAsWon(board, this.state.o);
         }
-      });
-      if (this._hasThreeInARow(xOccupancy)) {
-        this._boardWinners[board] = 'X';
-        this._xScore += 1;
-        scoreChanged = true;
-        this._markBoardAsWon(board, this.state.x);
-      } else if (this._hasThreeInARow(oOccupancy)) {
-        this._boardWinners[board] = 'O';
-        this._oScore += 1;
-        scoreChanged = true;
-        this._markBoardAsWon(board, this.state.o);
       }
     }
     if (scoreChanged) {
