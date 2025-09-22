@@ -146,7 +146,11 @@ describe('QuantumTicTacToeGame', () => {
         joinBothPlayers();
         makeMove(player1, 'A', 0, 0);
         makeMove(player2, 'B', 0, 0);
-        expectMoveToThrow(player1, { board: 'A', row: 0, col: 0 }, BOARD_POSITION_NOT_EMPTY_MESSAGE);
+        expectMoveToThrow(
+          player1,
+          { board: 'A', row: 0, col: 0 },
+          BOARD_POSITION_NOT_EMPTY_MESSAGE,
+        );
       });
 
       it('should reject moves to a board that does not exist', () => {
@@ -156,8 +160,8 @@ describe('QuantumTicTacToeGame', () => {
           gameID: game.id,
           move: {
             board: 'D' as unknown as BoardID,
-            row: 0 as 0,
-            col: 0 as 0,
+            row: 0 as const,
+            col: 0 as const,
             gamePiece: 'X',
           },
         };
@@ -217,7 +221,11 @@ describe('QuantumTicTacToeGame', () => {
         makeMove(player1, 'A', 0, 1);
         makeMove(player2, 'B', 0, 1);
         makeMove(player1, 'A', 0, 2);
-        expectMoveToThrow(player2, { board: 'A', row: 1, col: 1 }, BOARD_POSITION_NOT_VALID_MESSAGE);
+        expectMoveToThrow(
+          player2,
+          { board: 'A', row: 1, col: 1 },
+          BOARD_POSITION_NOT_VALID_MESSAGE,
+        );
       });
 
       it('should end the game when all boards are full or won (X wins)', () => {
@@ -316,7 +324,11 @@ describe('QuantumTicTacToeGame', () => {
         makeMove(player2, 'A', 0, 0);
         expect(game.state.publiclyVisible.A[0][0]).toBe(true);
         makeMove(player1, 'B', 1, 1);
-        expectMoveToThrow(player2, { board: 'A', row: 0, col: 0 }, BOARD_POSITION_NOT_EMPTY_MESSAGE);
+        expectMoveToThrow(
+          player2,
+          { board: 'A', row: 0, col: 0 },
+          BOARD_POSITION_NOT_EMPTY_MESSAGE,
+        );
       });
     });
 

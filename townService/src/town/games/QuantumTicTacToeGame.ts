@@ -183,9 +183,12 @@ export default class QuantumTicTacToeGame extends Game<
    * player's turn, that the game is actually in-progress, etc.
    * @see TicTacToeGame#_validateMove
    */
-  private _validateMove(
-    move: GameMove<QuantumTicTacToeMove>,
-  ): { piece: PlayerPiece; board: BoardID; row: 0 | 1 | 2; col: 0 | 1 | 2 } {
+  private _validateMove(move: GameMove<QuantumTicTacToeMove>): {
+    piece: PlayerPiece;
+    board: BoardID;
+    row: 0 | 1 | 2;
+    col: 0 | 1 | 2;
+  } {
     if (this.state.status !== 'IN_PROGRESS') {
       throw new InvalidParametersError(GAME_NOT_IN_PROGRESS_MESSAGE);
     }
@@ -379,4 +382,3 @@ export default class QuantumTicTacToeGame extends Game<
     return false;
   }
 }
-
