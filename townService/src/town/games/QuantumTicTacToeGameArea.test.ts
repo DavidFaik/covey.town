@@ -80,10 +80,13 @@ describe('QuantumTicTacToeGameArea', () => {
 
   beforeEach(() => {
     const gameConstructorSpy = jest.spyOn(QuantumTicTacToeGameModule, 'default');
-    game = new TestingGame();
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore (Testing without using the real game class)
-    gameConstructorSpy.mockReturnValue(game);
+    gameConstructorSpy.mockImplementation(() => {
+      const createdGame = new TestingGame();
+      game = createdGame;
+      return createdGame;
+    });
 
     player1 = createPlayerForTesting();
     player2 = createPlayerForTesting();
@@ -97,6 +100,10 @@ describe('QuantumTicTacToeGameArea', () => {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore (Test requires access to protected method)
     interactableUpdateSpy = jest.spyOn(gameArea, '_emitAreaChanged');
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('handleCommand', () => {
@@ -125,6 +132,29 @@ describe('QuantumTicTacToeGameArea', () => {
           expect(joinSpy).toHaveBeenCalledWith(player2);
           expect(gameID).toEqual(gameID2);
           expect(interactableUpdateSpy).toHaveBeenCalledTimes(2);
+        });
+      });
+
+      describe('when the existing game has ended', () => {
+        it('should create a new game instance with a different id when a player rejoins', () => {
+          const { gameID: firstGameID } = gameArea.handleCommand({ type: 'JoinGame' }, player1);
+          gameArea.handleCommand({ type: 'JoinGame' }, player2);
+          if (!game) {
+            throw new Error('Game was not created by the initial joins');
+          }
+          const finishedGame = game;
+          finishedGame.endGame(player1.id, 2, 1);
+
+          interactableUpdateSpy.mockClear();
+
+          const { gameID: secondGameID } = gameArea.handleCommand({ type: 'JoinGame' }, player1);
+          if (!game) {
+            throw new Error('A new game was not created after the previous game ended');
+          }
+          expect(game).not.toBe(finishedGame);
+          expect(secondGameID).toEqual(game.id);
+          expect(secondGameID).not.toEqual(firstGameID);
+          expect(interactableUpdateSpy).toHaveBeenCalledTimes(1);
         });
       });
     });
