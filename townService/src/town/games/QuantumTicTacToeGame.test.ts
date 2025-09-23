@@ -297,9 +297,23 @@ describe('QuantumTicTacToeGame', () => {
 
     const setUpEndGameScenario = (
       placements: { board: BoardID; row: 0 | 1 | 2; col: 0 | 1 | 2; piece: PlayerPiece }[],
+      fullyContestedBoards: BoardID[] = [],
     ) => {
       initializeBoardsFromPlacements(placements);
-      getInternals()._checkForGameEnding();
+      const internals = getInternals();
+      fullyContestedBoards.forEach(board => {
+        if (internals._boardWinners[board]) {
+          return;
+        }
+        for (let row = 0; row < 3; row += 1) {
+          for (let col = 0; col < 3; col += 1) {
+            internals._privateBoards.X[board][row][col] = true;
+            internals._privateBoards.O[board][row][col] = true;
+            game.state.publiclyVisible[board][row][col] = true;
+          }
+        }
+      });
+      internals._checkForGameEnding();
     };
 
     describe('validation', () => {
@@ -485,7 +499,7 @@ describe('QuantumTicTacToeGame', () => {
         expect(result?.scores[player2.id]).toBe(2);
       });
 
-      it('should declare a tie if scores are equal at the end', () => {
+      it('should remain in progress when a tied board still has hidden squares', () => {
         setUpEndGameScenario([
           { board: 'A', row: 0, col: 0, piece: 'X' },
           { board: 'B', row: 0, col: 0, piece: 'O' },
@@ -503,6 +517,33 @@ describe('QuantumTicTacToeGame', () => {
           { board: 'C', row: 2, col: 2, piece: 'O' },
           { board: 'C', row: 2, col: 1, piece: 'X' },
         ]);
+        expect(game.state.status).toBe('IN_PROGRESS');
+        expect(game.state.winner).toBeUndefined();
+        expect(() => makeMove(player2, 'C', 0, 0)).not.toThrow();
+        expect(game.state.publiclyVisible.C[0][0]).toBe(true);
+      });
+
+      it('should declare a tie if scores are equal at the end', () => {
+        setUpEndGameScenario(
+          [
+            { board: 'A', row: 0, col: 0, piece: 'X' },
+            { board: 'B', row: 0, col: 0, piece: 'O' },
+            { board: 'A', row: 0, col: 1, piece: 'X' },
+            { board: 'B', row: 1, col: 0, piece: 'O' },
+            { board: 'A', row: 0, col: 2, piece: 'X' },
+            { board: 'B', row: 2, col: 0, piece: 'O' },
+            { board: 'C', row: 0, col: 0, piece: 'X' },
+            { board: 'C', row: 0, col: 1, piece: 'O' },
+            { board: 'C', row: 0, col: 2, piece: 'X' },
+            { board: 'C', row: 1, col: 0, piece: 'O' },
+            { board: 'C', row: 1, col: 1, piece: 'X' },
+            { board: 'C', row: 2, col: 0, piece: 'O' },
+            { board: 'C', row: 1, col: 2, piece: 'X' },
+            { board: 'C', row: 2, col: 2, piece: 'O' },
+            { board: 'C', row: 2, col: 1, piece: 'X' },
+          ],
+          ['C'],
+        );
 
         expect(game.state.status).toBe('OVER');
         expect(game.state.winner).toBeUndefined();

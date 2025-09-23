@@ -326,6 +326,28 @@ export default class QuantumTicTacToeGame extends Game<
     }
   }
 
+  private _boardHasAvailableMove(board: BoardID): boolean {
+    if (this._boardWinners[board]) {
+      return false;
+    }
+    const xBoard = this._privateBoards.X[board];
+    const oBoard = this._privateBoards.O[board];
+    for (let row = 0; row < 3; row += 1) {
+      for (let col = 0; col < 3; col += 1) {
+        if (!xBoard[row][col] || !oBoard[row][col]) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private _markBoardAsTied(board: BoardID): void {
+    const boardState = this._games[board].state;
+    boardState.status = 'OVER';
+    boardState.winner = undefined;
+  }
+
   /**
    * A Quantum Tic-Tac-Toe game ends when no more moves are possible.
    * This happens when all squares on all boards are either occupied or part of a won board.
@@ -334,12 +356,14 @@ export default class QuantumTicTacToeGame extends Game<
     if (this.state.status === 'OVER') {
       return;
     }
-    const hasAvailableMove = BOARD_IDS.some(board => {
-      if (this._boardWinners[board]) {
-        return false;
+    let hasAvailableMove = false;
+    for (const board of BOARD_IDS) {
+      if (this._boardHasAvailableMove(board)) {
+        hasAvailableMove = true;
+      } else if (!this._boardWinners[board]) {
+        this._markBoardAsTied(board);
       }
-      return this._games[board].state.moves.length < 9;
-    });
+    }
     if (hasAvailableMove) {
       return;
     }
