@@ -15,7 +15,7 @@ import QuantumTicTacToeGame from './QuantumTicTacToeGame';
 type BoardID = 'A' | 'B' | 'C';
 type Position = { board: BoardID; row: 0 | 1 | 2; col: 0 | 1 | 2 };
 
-type PlayerPiece = 'X' | 'O';
+const BOARD_IDS: BoardID[] = ['A', 'B', 'C'];
 
 describe('QuantumTicTacToeGame', () => {
   let game: QuantumTicTacToeGame;
@@ -128,49 +128,18 @@ describe('QuantumTicTacToeGame', () => {
         }
       )._games[board].state.moves;
 
-    type InternalGameState = {
-      _games: Record<
-        BoardID,
-        {
-          state: {
-            moves: { gamePiece: PlayerPiece; row: number; col: number }[];
-            status: string;
-            winner?: string;
-          };
-        }
-      >;
-      _boardWinners: Partial<Record<BoardID, PlayerPiece>>;
-      _xScore: number;
-      _oScore: number;
-      _checkForGameEnding: () => void;
-      _result?: { gameID: string; scores: Record<string, number> };
+    const countBoardWins = () => {
+      const winners = BOARD_IDS.map(board => getBoardStatus(board).winner);
+      return {
+        x: winners.filter(winner => winner === player1.id).length,
+        o: winners.filter(winner => winner === player2.id).length,
+      };
     };
 
-    const getInternals = () => game as unknown as InternalGameState;
-
-    const cloneMoves = (moves: { gamePiece: PlayerPiece; row: number; col: number }[]) =>
-      moves.map(move => ({ ...move }));
-
-    const setBoardState = (
-      board: BoardID,
-      moves: { gamePiece: PlayerPiece; row: number; col: number }[],
-      winnerPiece?: PlayerPiece,
-    ) => {
-      const internals = getInternals();
-      internals._games[board].state.moves = cloneMoves(moves);
-      internals._games[board].state.status = 'OVER';
-      let winnerId: string | undefined;
-      if (winnerPiece === 'X') {
-        winnerId = game.state.x;
-      } else if (winnerPiece === 'O') {
-        winnerId = game.state.o;
-      }
-      internals._games[board].state.winner = winnerId;
-      if (winnerPiece) {
-        internals._boardWinners[board] = winnerPiece;
-      } else {
-        delete internals._boardWinners[board];
-      }
+    const expectScoresToMatchBoardResults = () => {
+      const { x, o } = countBoardWins();
+      expect(game.state.xScore).toBe(x);
+      expect(game.state.oScore).toBe(o);
     };
 
     describe('validation', () => {
@@ -304,150 +273,114 @@ describe('QuantumTicTacToeGame', () => {
       });
 
       it('should end the game when all boards are full or won (X wins)', () => {
-        const internals = getInternals();
-        internals._boardWinners = {};
-        internals._xScore = 2;
-        internals._oScore = 1;
-        internals._result = undefined;
-
-        const { state } = game;
-        state.status = 'IN_PROGRESS';
-        state.winner = undefined;
-        state.xScore = 2;
-        state.oScore = 1;
-
-        const xWinningMoves: { gamePiece: PlayerPiece; row: number; col: number }[] = [
-          { gamePiece: 'X', row: 0, col: 0 },
-          { gamePiece: 'O', row: 1, col: 0 },
-          { gamePiece: 'X', row: 0, col: 1 },
-          { gamePiece: 'O', row: 1, col: 1 },
-          { gamePiece: 'X', row: 0, col: 2 },
+        const sequence: Position[] = [
+          { board: 'A', row: 0, col: 0 },
+          { board: 'B', row: 0, col: 0 },
+          { board: 'A', row: 0, col: 1 },
+          { board: 'B', row: 1, col: 0 },
+          { board: 'A', row: 0, col: 2 },
+          { board: 'B', row: 2, col: 0 },
+          { board: 'C', row: 0, col: 0 },
+          { board: 'C', row: 1, col: 0 },
+          { board: 'C', row: 0, col: 1 },
+          { board: 'C', row: 1, col: 1 },
+          { board: 'C', row: 0, col: 2 },
         ];
-        const oWinningMoves: { gamePiece: PlayerPiece; row: number; col: number }[] = [
-          { gamePiece: 'X', row: 0, col: 1 },
-          { gamePiece: 'O', row: 0, col: 0 },
-          { gamePiece: 'X', row: 2, col: 2 },
-          { gamePiece: 'O', row: 1, col: 0 },
-          { gamePiece: 'X', row: 1, col: 1 },
-          { gamePiece: 'O', row: 2, col: 0 },
-        ];
-
-        setBoardState('A', xWinningMoves, 'X');
-        setBoardState('B', oWinningMoves, 'O');
-        setBoardState('C', xWinningMoves, 'X');
-
-        internals._checkForGameEnding();
+        playSequence(sequence);
 
         expect(game.state.status).toBe('OVER');
         expect(game.state.winner).toBe(player1.id);
-        expect(game.state.xScore).toBe(2);
-        expect(game.state.oScore).toBe(1);
+        expectScoresToMatchBoardResults();
+
         const { result } = game.toModel();
         expect(result).toBeDefined();
-        expect(result?.scores[player1.id]).toBe(2);
-        expect(result?.scores[player2.id]).toBe(1);
+        expect(result?.scores[player1.id]).toBe(game.state.xScore);
+        expect(result?.scores[player2.id]).toBe(game.state.oScore);
       });
 
       it('should end the game when all boards are full or won (O wins)', () => {
-        const internals = getInternals();
-        internals._boardWinners = {};
-        internals._xScore = 1;
-        internals._oScore = 2;
-        internals._result = undefined;
-
-        const { state } = game;
-        state.status = 'IN_PROGRESS';
-        state.winner = undefined;
-        state.xScore = 1;
-        state.oScore = 2;
-
-        const xWinningMoves: { gamePiece: PlayerPiece; row: number; col: number }[] = [
-          { gamePiece: 'X', row: 0, col: 0 },
-          { gamePiece: 'O', row: 1, col: 0 },
-          { gamePiece: 'X', row: 0, col: 1 },
-          { gamePiece: 'O', row: 1, col: 1 },
-          { gamePiece: 'X', row: 0, col: 2 },
+        const sequence: Position[] = [
+          { board: 'A', row: 0, col: 0 },
+          { board: 'B', row: 0, col: 0 },
+          { board: 'A', row: 0, col: 1 },
+          { board: 'B', row: 1, col: 0 },
+          { board: 'A', row: 0, col: 2 },
+          { board: 'B', row: 2, col: 0 },
+          { board: 'C', row: 0, col: 1 },
+          { board: 'C', row: 0, col: 0 },
+          { board: 'C', row: 1, col: 1 },
+          { board: 'C', row: 1, col: 0 },
+          { board: 'C', row: 2, col: 2 },
+          { board: 'C', row: 2, col: 0 },
         ];
-        const oWinningMoves: { gamePiece: PlayerPiece; row: number; col: number }[] = [
-          { gamePiece: 'X', row: 0, col: 1 },
-          { gamePiece: 'O', row: 0, col: 0 },
-          { gamePiece: 'X', row: 2, col: 2 },
-          { gamePiece: 'O', row: 1, col: 0 },
-          { gamePiece: 'X', row: 1, col: 1 },
-          { gamePiece: 'O', row: 2, col: 0 },
-        ];
-
-        setBoardState('A', xWinningMoves, 'X');
-        setBoardState('B', oWinningMoves, 'O');
-        setBoardState('C', oWinningMoves, 'O');
-
-        internals._checkForGameEnding();
+        playSequence(sequence);
 
         expect(game.state.status).toBe('OVER');
         expect(game.state.winner).toBe(player2.id);
-        expect(game.state.xScore).toBe(1);
-        expect(game.state.oScore).toBe(2);
+        expectScoresToMatchBoardResults();
+
         const { result } = game.toModel();
         expect(result).toBeDefined();
-        expect(result?.scores[player1.id]).toBe(1);
-        expect(result?.scores[player2.id]).toBe(2);
+        expect(result?.scores[player1.id]).toBe(game.state.xScore);
+        expect(result?.scores[player2.id]).toBe(game.state.oScore);
       });
 
       it('should declare a tie if scores are equal at the end', () => {
-        const internals = getInternals();
-        internals._boardWinners = {};
-        internals._xScore = 1;
-        internals._oScore = 1;
-        internals._result = undefined;
-
-        const { state } = game;
-        state.status = 'IN_PROGRESS';
-        state.winner = undefined;
-        state.xScore = 1;
-        state.oScore = 1;
-
-        const xWinningMoves: { gamePiece: PlayerPiece; row: number; col: number }[] = [
-          { gamePiece: 'X', row: 0, col: 0 },
-          { gamePiece: 'O', row: 1, col: 0 },
-          { gamePiece: 'X', row: 0, col: 1 },
-          { gamePiece: 'O', row: 1, col: 1 },
-          { gamePiece: 'X', row: 0, col: 2 },
+        const sequence: Position[] = [
+          { board: 'A', row: 0, col: 0 },
+          { board: 'B', row: 0, col: 0 },
+          { board: 'A', row: 0, col: 1 },
+          { board: 'B', row: 1, col: 0 },
+          { board: 'A', row: 0, col: 2 },
+          { board: 'B', row: 2, col: 0 },
+          { board: 'C', row: 0, col: 0 },
+          { board: 'C', row: 0, col: 1 },
+          { board: 'C', row: 0, col: 2 },
+          { board: 'C', row: 1, col: 1 },
+          { board: 'C', row: 1, col: 0 },
+          { board: 'C', row: 2, col: 0 },
+          { board: 'C', row: 1, col: 2 },
+          { board: 'C', row: 2, col: 2 },
+          { board: 'C', row: 2, col: 1 },
         ];
-        const oWinningMoves: { gamePiece: PlayerPiece; row: number; col: number }[] = [
-          { gamePiece: 'X', row: 0, col: 1 },
-          { gamePiece: 'O', row: 0, col: 0 },
-          { gamePiece: 'X', row: 2, col: 2 },
-          { gamePiece: 'O', row: 1, col: 0 },
-          { gamePiece: 'X', row: 1, col: 1 },
-          { gamePiece: 'O', row: 2, col: 0 },
-        ];
-        const fullBoardMoves: { gamePiece: PlayerPiece; row: number; col: number }[] = [
-          { gamePiece: 'X', row: 0, col: 0 },
-          { gamePiece: 'O', row: 0, col: 1 },
-          { gamePiece: 'X', row: 0, col: 2 },
-          { gamePiece: 'O', row: 1, col: 0 },
-          { gamePiece: 'X', row: 1, col: 1 },
-          { gamePiece: 'O', row: 1, col: 2 },
-          { gamePiece: 'X', row: 2, col: 1 },
-          { gamePiece: 'O', row: 2, col: 0 },
-          { gamePiece: 'X', row: 2, col: 2 },
-        ];
-
-        setBoardState('A', xWinningMoves, 'X');
-        setBoardState('B', oWinningMoves, 'O');
-        setBoardState('C', fullBoardMoves);
-
-        internals._checkForGameEnding();
+        playSequence(sequence);
 
         expect(game.state.status).toBe('OVER');
         expect(game.state.winner).toBeUndefined();
-        expect(game.state.xScore).toBe(1);
-        expect(game.state.oScore).toBe(1);
+        expectScoresToMatchBoardResults();
+
         const { result } = game.toModel();
         expect(result).toBeDefined();
-        expect(result?.scores[player1.id]).toBe(1);
-        expect(result?.scores[player2.id]).toBe(1);
+        expect(result?.scores[player1.id]).toBe(game.state.xScore);
+        expect(result?.scores[player2.id]).toBe(game.state.oScore);
         expect(() => makeMove(player1, 'C', 0, 0)).toThrowError(GAME_NOT_IN_PROGRESS_MESSAGE);
+      });
+
+      it('should allow collisions on a tied board even after it is full', () => {
+        const tieBoardSequence: Position[] = [
+          { board: 'A', row: 0, col: 0 },
+          { board: 'A', row: 0, col: 1 },
+          { board: 'A', row: 0, col: 2 },
+          { board: 'A', row: 1, col: 1 },
+          { board: 'A', row: 1, col: 0 },
+          { board: 'A', row: 1, col: 2 },
+          { board: 'A', row: 2, col: 1 },
+          { board: 'A', row: 2, col: 0 },
+          { board: 'A', row: 2, col: 2 },
+        ];
+        tieBoardSequence.forEach((move, idx) => {
+          const currentPlayer = idx % 2 === 0 ? player1 : player2;
+          makeMove(currentPlayer, move.board, move.row, move.col);
+        });
+
+        expect(getBoardMoves('A')).toHaveLength(9);
+        expect(game.state.xScore).toBe(0);
+        expect(game.state.oScore).toBe(0);
+        expect(game.state.publiclyVisible.A[0][0]).toBe(false);
+
+        expect(() => makeMove(player2, 'A', 0, 0)).not.toThrow();
+        expect(game.state.publiclyVisible.A[0][0]).toBe(true);
+        expect(getBoardMoves('A')).toHaveLength(9);
       });
 
       it('should preserve the recorded result after the game ends', () => {
